@@ -1,3 +1,4 @@
+#include<netdb.h>
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -5,73 +6,71 @@
 #include<arpa/inet.h>	//inet_addr
 #include<unistd.h>
 
-int main(int argc , char *argv[])
+void func(int socket_desc)
 {
-	int socket_desc, fd;
-	struct sockaddr_in server; 
-        char *message = malloc (100), server_reply[6000];
+	char buff[80];
+	int n;
+	for (;;)
+	{
+		bzero(buff, sizeof(buff));
+		printf("Enter message: ");
+		n = 0;
+		while ((buff[n++] = getchar()) != '\n');
+
+		write(socket_desc, buff, sizeof(buff));
+		bzero(buff, sizeof(buff));
+		read(socket_desc, buff, sizeof(buff));
+		printf("From Server : %s", buff);
+		if ((strncmp(buff, "exit", 4)) == 0)
+		{
+			printf("Client exit...\n");
+		break;
+		}
+	}
+}
+
+int main()
+{
+	int socket_desc, conn;
+	struct sockaddr_in server, client; 
+//        char *message = malloc (100), server_reply[6000];
 	
-	//Create socket
+	//Create socket 
 	socket_desc = socket(AF_INET , SOCK_STREAM , 0);
 	if (socket_desc == -1)
 	{
-		printf("Could not create socket");
+		printf("Could not create socket...\n");
+		exit(0);
 	}
+	else
+		printf("Socket successfully created...\n");
+	bzero(&server, sizeof(server));
 
-
-
-	fd = socket(AF_INET, SOCK_STREAM, 0);
+//	fd = socket(AF_INET, SOCK_STREAM, 0);
+	//Assign IP, PORT
 	server.sin_family = AF_INET;
 	server.sin_port = htons(8888);
-	inet_pton(AF_INET, "192.168.0.135", &server.sin_addr); //This binds the client to localhost
-	connect(fd, (struct sockaddr *)&server, sizeof(server)); //This connects the client to the server.
+	server.sin_addr.s_addr = inet_addr("192.168.0.135");
+//	inet_pton(AF_INET, "192.168.0.135", &server.sin_addr); //This binds the client to localhost
+//	connect(fd, (struct sockaddr *)&server, sizeof(server)); //This connects the client to the server.
 
 	
 
-	//Connect to remote server
-	if (connect(socket_desc , (struct sockaddr *)&server , sizeof(server)) < 0)
+	//Connect client socket to server socket
+	if (connect(socket_desc , (struct sockaddr *)&server, sizeof(server)) !=0)
 	{
-		puts("connect error");
-		return 1;
+		printf("Connection with server failed...\n");
+		exit(0);
 	}
-	
-	puts("Connected \n");
 
-
-
-	//Send some data
-	while(1)
-	{
-    		printf("Enter a message: ");
-    		fgets(message, 100, stdin);
-    		send(fd, message, strlen(message), 0);
-    		//extra breaking condition can be added here (to terminate the while loop)
-		break;
-
-
-	}
+	else
+		printf("Connected to the server...\n");
 
 	
+	//Func for chat
+	func(socket_desc);
 
-	if( send(socket_desc , message , strlen(message) , 0) < 0)
-	{
-		puts("Send failed");
-		return 1;
-	}
-	puts("Data Send\n");
+	//Close socket
+	close(socket_desc);
 
-
-	//Receive a reply from the server
-	if( recv(socket_desc, server_reply , 2000 , 0) < 0)
-	{
-		puts("recv failed");
-	}
-	puts("Reply received\n");
-	puts(server_reply);
-
-
-
-
-	return 0;
 }
-
